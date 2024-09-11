@@ -18,6 +18,7 @@ go.work
 .env
 .env.local
 .env.*.local
+URL.env
 /bin/
 /tmp/
 *.db
