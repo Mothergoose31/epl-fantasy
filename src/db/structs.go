@@ -2,6 +2,8 @@ package db
 
 import (
 	"time"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type Data struct {
@@ -216,4 +218,52 @@ type ElementType struct {
 	UIShirtSpecific    bool   `json:"ui_shirt_specific"`
 	SubPositionsLocked []int  `json:"sub_positions_locked"`
 	ElementCount       int    `json:"element_count"`
+}
+
+// ================ DB Structs ================
+// ===========================================+
+
+type PlayerSnapshot struct {
+	ID                   int     `bson:"id"`
+	GameWeek             int     `bson:"game_week"`
+	FirstName            string  `bson:"first_name"`
+	SecondName           string  `bson:"second_name"`
+	WebName              string  `bson:"web_name"`
+	Team                 int     `bson:"team"`
+	ElementType          int     `bson:"element_type"`
+	TotalPoints          int     `bson:"total_points"`
+	EventPoints          int     `bson:"event_points"`
+	NowCost              int     `bson:"now_cost"`
+	Form                 float64 `bson:"form"`
+	SelectedByPercent    float64 `bson:"selected_by_percent"`
+	Minutes              int     `bson:"minutes"`
+	GoalsScored          int     `bson:"goals_scored"`
+	Assists              int     `bson:"assists"`
+	CleanSheets          int     `bson:"clean_sheets"`
+	GoalsConceded        int     `bson:"goals_conceded"`
+	OwnGoals             int     `bson:"own_goals"`
+	PenaltiesSaved       int     `bson:"penalties_saved"`
+	PenaltiesMissed      int     `bson:"penalties_missed"`
+	YellowCards          int     `bson:"yellow_cards"`
+	RedCards             int     `bson:"red_cards"`
+	Saves                int     `bson:"saves"`
+	Bonus                int     `bson:"bonus"`
+	Bps                  int     `bson:"bps"`
+	Influence            float64 `bson:"influence"`
+	Creativity           float64 `bson:"creativity"`
+	Threat               float64 `bson:"threat"`
+	IctIndex             float64 `bson:"ict_index"`
+	ExpectedGoals        float64 `bson:"expected_goals"`
+	ExpectedAssists      float64 `bson:"expected_assists"`
+	ExpectedGoalsPer90   float64 `bson:"expected_goals_per_90"`
+	SavesPer90           float64 `bson:"saves_per_90"`
+	ExpectedAssistsPer90 float64 `bson:"expected_assists_per_90"`
+}
+
+type GameWeekData struct {
+	ID        primitive.ObjectID `bson:"_id,omitempty"`
+	GameWeek  int                `bson:"game_week"`
+	Season    string             `bson:"season"`
+	Timestamp time.Time          `bson:"timestamp"`
+	Players   []PlayerSnapshot   `bson:"players"`
 }

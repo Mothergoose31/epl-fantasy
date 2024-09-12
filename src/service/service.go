@@ -20,7 +20,6 @@ type FPLService struct {
 }
 
 func NewFPLService() (*FPLService, error) {
-	// Load the URL.env file
 	err := godotenv.Load("URL.env")
 	if err != nil {
 		fmt.Printf("Warning: Error loading URL.env file: %v", err)
