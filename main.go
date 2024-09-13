@@ -1,11 +1,18 @@
 package main
 
 import (
+	"context"
 	"epl-fantasy/src/config"
 	"epl-fantasy/src/db"
-	"epl-fantasy/src/service"
-	"fmt"
+	"epl-fantasy/src/handlers"
 	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/gorilla/mux"
 )
 
 func init() {
@@ -20,31 +27,31 @@ func main() {
 	}
 	log.Println("Successfully connected to MongoDB")
 
-	fplService, err := service.NewFPLService()
-	if err != nil {
-		log.Fatalf("Error creating FPL service: %v", err)
+	r := mux.NewRouter()
+	r.HandleFunc("/epl", handlers.FetchAndStoreGameWeekData).Methods("POST")
+	r.HandleFunc("/epl", handlers.GetGameData).Methods("GET")
+
+	server := &http.Server{
+		Addr:    ":8080",
+		Handler: r,
 	}
 
-	data, body, err := fplService.FetchFPLData()
-	if err != nil {
-		log.Fatalf("Error fetching FPL data: %v", err)
-	}
-
-	fmt.Println("Raw API Response:")
-	fmt.Println(string(body))
-
-	fmt.Printf("\nFetched data for %d players\n", len(data.Elements))
-	fmt.Printf("Latest GameWeek: %d\n", data.GameWeek)
-
-	if len(data.Elements) > 0 {
-		player := data.Elements[0]
-		fmt.Printf("\nFirst player details:\n")
-		fmt.Printf("Name: %s %s\n", player.FirstName, player.SecondName)
-		fmt.Printf("Team: %d\n", player.Team)
-		fmt.Printf("Position: %d\n", player.ElementType)
-		fmt.Printf("Cost: %.1f\n", float64(player.NowCost)/10)
-		fmt.Printf("Form: %s\n", player.Form)
-		fmt.Printf("Total Points: %d\n", player.TotalPoints)
+	go func() {
+		log.Println("Starting server on port 8080")
+		if err := server.ListenAndServe(); err != nil {
+			log.Fatalf("ListenAndServe(): %v", err)
+		}
+	}()
+	stopChan := make(chan os.Signal, 1)
+	signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM)
+	<-stopChan
+	log.Println("Shutting down server...")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := server.Shutdown(ctx); err != nil {
+		log.Fatalf("Shutdown(): %v", err)
+	} else {
+		log.Println("Server stopped")
 	}
 
 }

@@ -90,7 +90,17 @@ func (s *FPLService) FetchFPLData() (*config.Data, []byte, error) {
 	if err != nil {
 		return nil, body, fmt.Errorf("error unmarshalling JSON: %v", err)
 	}
+	fmt.Println("=====================================")
+	fmt.Println("=====================================")
+	fmt.Println("=====================================")
 
+	fmt.Println(data.GameWeek)
+
+	fmt.Println("=====================================")
+	fmt.Println("=====================================")
+	fmt.Println("=====================================")
+
+	fmt.Println(data.GameWeek)
 	data.GameWeek = getLatestWeek(data.Events)
 
 	return &data, body, nil
