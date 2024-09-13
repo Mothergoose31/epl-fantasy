@@ -1,12 +1,25 @@
 package main
 
 import (
+	"epl-fantasy/src/config"
+	"epl-fantasy/src/db"
 	"epl-fantasy/src/service"
 	"fmt"
 	"log"
 )
 
+func init() {
+	config.App = config.GetConfig("LOCAL")
+}
+
 func main() {
+	var err error
+	config.Client, err = db.InitializeMongoDB(config.App)
+	if err != nil {
+		log.Fatalf("Error initializing MongoDB: %v", err)
+	}
+	log.Println("Successfully connected to MongoDB")
+
 	fplService, err := service.NewFPLService()
 	if err != nil {
 		log.Fatalf("Error creating FPL service: %v", err)
@@ -33,4 +46,5 @@ func main() {
 		fmt.Printf("Form: %s\n", player.Form)
 		fmt.Printf("Total Points: %d\n", player.TotalPoints)
 	}
+
 }

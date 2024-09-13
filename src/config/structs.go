@@ -1,9 +1,15 @@
-package db
+package config
 
 import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+)
+
+var (
+	App    *StatusConfig
+	Client *mongo.Client
 )
 
 type Data struct {

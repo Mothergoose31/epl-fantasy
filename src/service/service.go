@@ -2,7 +2,7 @@ package service
 
 import (
 	"encoding/json"
-	"epl-fantasy/src/db"
+	"epl-fantasy/src/config"
 	"fmt"
 	"io"
 	"net/http"
@@ -37,7 +37,7 @@ func NewFPLService() (*FPLService, error) {
 	}, nil
 }
 
-func getLatestWeek(events []db.Event) int {
+func getLatestWeek(events []config.Event) int {
 	latestWeek := 0
 
 	for _, event := range events {
@@ -63,7 +63,7 @@ func getLatestWeek(events []db.Event) int {
 
 // ==================================================
 
-func (s *FPLService) FetchFPLData() (*db.Data, []byte, error) {
+func (s *FPLService) FetchFPLData() (*config.Data, []byte, error) {
 	url := s.BaseURL + s.Endpoint
 
 	client := &http.Client{
@@ -85,7 +85,7 @@ func (s *FPLService) FetchFPLData() (*db.Data, []byte, error) {
 		return nil, nil, fmt.Errorf("error reading response body: %v", err)
 	}
 
-	var data db.Data
+	var data config.Data
 	err = json.Unmarshal(body, &data)
 	if err != nil {
 		return nil, body, fmt.Errorf("error unmarshalling JSON: %v", err)
