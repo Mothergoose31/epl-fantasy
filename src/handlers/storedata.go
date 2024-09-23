@@ -12,7 +12,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -146,52 +145,5 @@ func GetGameData(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
-	}
-}
-
-func DeleteGameWeekData(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	gameWeek := vars["id"]
-
-	// Convert gameWeek to int
-	gameWeekInt, err := strconv.Atoi(gameWeek)
-	if err != nil {
-		http.Error(w, "Invalid game week parameter", http.StatusBadRequest)
-		return
-	}
-
-	collection := db.GetGameWeekCollection()
-	if collection == nil {
-		http.Error(w, "Internal server error: collection is nil", http.StatusInternalServerError)
-		return
-	}
-
-	// Create a filter for the specified game week
-	filter := bson.M{"game_week": gameWeekInt}
-
-	// Attempt to delete documents matching the filter
-	result, err := collection.DeleteMany(context.Background(), filter)
-	if err != nil {
-		log.Printf("Error deleting documents: %v", err)
-		http.Error(w, "Internal server error while deleting", http.StatusInternalServerError)
-		return
-	}
-
-	if result.DeletedCount == 0 {
-		log.Printf("No documents deleted for game week %d", gameWeekInt)
-		http.Error(w, fmt.Sprintf("No documents found for game week %d", gameWeekInt), http.StatusNotFound)
-		return
-	}
-
-	// Return the number of deleted documents
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "Deleted %d document(s) for game week %d", result.DeletedCount, gameWeekInt)
-
-	// Double-check if any documents remain
-	count, err := collection.CountDocuments(context.Background(), filter)
-	if err != nil {
-		log.Printf("Error counting remaining documents: %v", err)
-	} else if count > 0 {
-		log.Printf("Warning: %d document(s) still remain for game week %d after deletion", count, gameWeekInt)
 	}
 }
