@@ -273,3 +273,34 @@ type GameWeekData struct {
 	Timestamp time.Time          `bson:"timestamp"`
 	Players   []PlayerSnapshot   `bson:"players"`
 }
+
+type PlayerPerformance struct {
+	ID                int     `bson:"_id"`
+	WebName           string  `bson:"web_name"`
+	TotalPoints       int     `bson:"total_points"`
+	AvgPoints         float64 `bson:"avg_points"`
+	GoalsScored       int     `bson:"goals_scored"`
+	Assists           int     `bson:"assists"`
+	CleanSheets       int     `bson:"clean_sheets"`
+	GoalsConceded     int     `bson:"goals_conceded"`
+	Saves             int     `bson:"saves"`
+	Bonus             int     `bson:"bonus"`
+	BPS               int     `bson:"bps"`
+	Influence         float64 `bson:"influence"`
+	Creativity        float64 `bson:"creativity"`
+	Threat            float64 `bson:"threat"`
+	ICTIndex          float64 `bson:"ict_index"`
+	ExpectedGoals     float64 `bson:"expected_goals"`
+	ExpectedAssists   float64 `bson:"expected_assists"`
+	NowCost           int     `bson:"now_cost"`
+	SelectedByPercent float64 `bson:"selected_by_percent"`
+	PerformanceScore  float64 `bson:"performance_score"`
+	ValueScore        float64 `bson:"value_score"`
+}
+
+type OptimalTeam struct {
+	Goalkeepers []PlayerPerformance `json:"goalkeepers"`
+	Defenders   []PlayerPerformance `json:"defenders"`
+	Midfielders []PlayerPerformance `json:"midfielders"`
+	Forwards    []PlayerPerformance `json:"forwards"`
+}

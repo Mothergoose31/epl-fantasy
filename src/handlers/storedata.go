@@ -147,3 +147,74 @@ func GetGameData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+func GetBestPerformers(w http.ResponseWriter, r *http.Request) {
+	collection := db.GetGameWeekCollection()
+	if collection == nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	goalkeepers, err := GetBestPerformersOverGameWeeks(collection, 1, 3, 5, 20)
+	if err != nil {
+		http.Error(w, "Error getting goalkeepers: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	defenders, err := GetBestPerformersOverGameWeeks(collection, 2, 3, 5, 20)
+	if err != nil {
+		http.Error(w, "Error getting defenders: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	midfielders, err := GetBestPerformersOverGameWeeks(collection, 3, 3, 5, 20)
+	if err != nil {
+		http.Error(w, "Error getting midfielders: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	forwards, err := GetBestPerformersOverGameWeeks(collection, 4, 3, 5, 20)
+	if err != nil {
+		http.Error(w, "Error getting forwards: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// // Calculate the optimal team
+	limitPrice := 1030 // Set your budget limit here
+	optimalTeam, err := CalculateOptimalTeam(limitPrice, goalkeepers, defenders, midfielders, forwards)
+	if err != nil {
+		http.Error(w, "Error calculating optimal team: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// // Prepare the response
+	response := struct {
+		OptimalTeam []config.PlayerPerformance `json:"optimalTeam"`
+		TotalCost   int                        `json:"totalCost"`
+		TotalPoints int                        `json:"totalPoints"`
+	}{
+		OptimalTeam: optimalTeam,
+		TotalCost:   calculateTotalCost(optimalTeam),
+		TotalPoints: calculateTotalPoints(optimalTeam),
+	}
+
+	// // Send the response as JSON
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func calculateTotalCost(team []config.PlayerPerformance) int {
+	total := 0
+	for _, player := range team {
+		total += player.NowCost
+	}
+	return total
+}
+
+func calculateTotalPoints(team []config.PlayerPerformance) int {
+	total := 0
+	for _, player := range team {
+		total += player.TotalPoints
+	}
+	return total
+}

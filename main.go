@@ -30,6 +30,7 @@ func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/epl", handlers.FetchAndStoreGameWeekData).Methods("POST")
 	r.HandleFunc("/epl", handlers.GetGameData).Methods("GET")
+	r.HandleFunc("/epl/players", handlers.GetBestPerformers).Methods("GET")
 
 	server := &http.Server{
 		Addr:    ":8080",
