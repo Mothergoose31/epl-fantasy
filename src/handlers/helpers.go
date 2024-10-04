@@ -5,42 +5,21 @@ import (
 	"epl-fantasy/src/config"
 	"errors"
 	"fmt"
-	"math"
 	"sort"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-// hhamilton.typepad.com/files/pythag_mit_sa_2010.pdf
-// https://blogs.salford.ac.uk/business-school/wp-content/uploads/sites/7/2016/09/paper.pdf
-//
-
-//  using Weibull distrubition first paper is describes win perentage as a function of goals scored and goals allowed
-
-func PythagoreanExpectation(goalsScored, goalsAllowed float64, pythagoreanExponent float64) float64 {
-	gamma := pythagoreanExponent
-	kappa := math.Gamma(1 + 1/gamma)
-	N := 10
-
-	winProbability := math.Pow(goalsScored, gamma) / (math.Pow(goalsScored, gamma) + math.Pow(goalsAllowed, gamma))
-
-	drawProbability := 0.0
-	for c := 0; c <= N; c++ {
-		cFloat := float64(c)
-		gsProb := math.Exp(-math.Pow(kappa*(cFloat+1)/goalsScored, gamma)) - math.Exp(-math.Pow(kappa*cFloat/goalsScored, gamma))
-		gaProb := math.Exp(-math.Pow(kappa*(cFloat+1)/goalsAllowed, gamma)) - math.Exp(-math.Pow(kappa*cFloat/goalsAllowed, gamma))
-		drawProbability += gsProb * gaProb
-	}
-
-	expectedPoints := 3*winProbability + drawProbability
-
-	return expectedPoints
-}
+var playerteams map[int]int
+var teamswithTomanyPlayer []int
 
 func GetBestPerformersOverGameWeeks(collection *mongo.Collection, position int, startGameWeek, endGameWeek, limit int) ([]config.PlayerPerformance, error) {
 	pipeline := mongo.Pipeline{
-		{{Key: "$match", Value: bson.M{"game_week": bson.M{"$gte": startGameWeek, "$lte": endGameWeek}}}},
+		{{Key: "$match", Value: bson.M{
+			"game_week":            bson.M{"$gte": startGameWeek, "$lte": endGameWeek},
+			"players.element_type": position,
+		}}},
 		{{Key: "$unwind", Value: "$players"}},
 		{{Key: "$match", Value: bson.M{"players.element_type": position}}},
 		{{Key: "$group", Value: bson.M{
@@ -48,6 +27,7 @@ func GetBestPerformersOverGameWeeks(collection *mongo.Collection, position int, 
 			"web_name":            bson.M{"$first": "$players.web_name"},
 			"total_points":        bson.M{"$sum": "$players.event_points"},
 			"avg_points":          bson.M{"$avg": "$players.event_points"},
+			"team":                bson.M{"$first": "$players.team"},
 			"goals_scored":        bson.M{"$sum": "$players.goals_scored"},
 			"assists":             bson.M{"$sum": "$players.assists"},
 			"clean_sheets":        bson.M{"$sum": "$players.clean_sheets"},
@@ -65,17 +45,59 @@ func GetBestPerformersOverGameWeeks(collection *mongo.Collection, position int, 
 			"selected_by_percent": bson.M{"$last": "$players.selected_by_percent"},
 		}}},
 		{{Key: "$addFields", Value: bson.M{
-			"performance_score": bson.M{
-				"$add": []interface{}{
-					"$total_points",
-					bson.M{"$multiply": []interface{}{"$goals_scored", 5}},
-					bson.M{"$multiply": []interface{}{"$assists", 3}},
-					"$clean_sheets",
-					bson.M{"$multiply": []interface{}{"$saves", 0.5}},
-					"$bonus",
-					bson.M{"$divide": []interface{}{"$bps", 10}},
+			"base_score": bson.M{"$add": []interface{}{
+				"$total_points",
+				bson.M{"$multiply": []interface{}{"$avg_points", 5}},
+				bson.M{"$multiply": []interface{}{"$bonus", 2}},
+				bson.M{"$divide": []interface{}{"$bps", 20}},
+			}},
+			"ict_score": bson.M{"$add": []interface{}{
+				bson.M{"$multiply": []interface{}{"$influence", 0.3}},
+				bson.M{"$multiply": []interface{}{"$creativity", 0.3}},
+				bson.M{"$multiply": []interface{}{"$threat", 0.3}},
+				bson.M{"$multiply": []interface{}{"$ict_index", 0.1}},
+			}},
+		}}},
+		{{Key: "$addFields", Value: bson.M{
+			"performance_score": bson.M{"$switch": bson.M{
+				"branches": []interface{}{
+					bson.M{"case": bson.M{"$eq": []interface{}{position, 1}}, "then": bson.M{"$add": []interface{}{
+						"$base_score",
+						bson.M{"$multiply": []interface{}{"$clean_sheets", 4}},
+						bson.M{"$multiply": []interface{}{"$saves", 0.5}},
+						bson.M{"$multiply": []interface{}{"$goals_conceded", -0.5}},
+						bson.M{"$multiply": []interface{}{"$ict_score", 0.5}},
+					}}},
+					bson.M{"case": bson.M{"$eq": []interface{}{position, 2}}, "then": bson.M{"$add": []interface{}{
+						"$base_score",
+						bson.M{"$multiply": []interface{}{"$clean_sheets", 4}},
+						bson.M{"$multiply": []interface{}{"$goals_scored", 6}},
+						bson.M{"$multiply": []interface{}{"$assists", 3}},
+						bson.M{"$multiply": []interface{}{"$goals_conceded", -0.1}},
+						bson.M{"$multiply": []interface{}{"$ict_score", 0.7}},
+					}}},
+					bson.M{"case": bson.M{"$eq": []interface{}{position, 3}}, "then": bson.M{"$add": []interface{}{
+						"$base_score",
+						bson.M{"$multiply": []interface{}{"$goals_scored", 5}},
+						bson.M{"$multiply": []interface{}{"$assists", 3}},
+						"$clean_sheets",
+						"$ict_score",
+						bson.M{"$multiply": []interface{}{"$expected_goals", 2}},
+						bson.M{"$multiply": []interface{}{"$expected_assists", 2}},
+					}}},
+					bson.M{"case": bson.M{"$eq": []interface{}{position, 4}}, "then": bson.M{"$add": []interface{}{
+						"$base_score",
+						bson.M{"$multiply": []interface{}{"$goals_scored", 4}},
+						bson.M{"$multiply": []interface{}{"$assists", 2}},
+						bson.M{"$multiply": []interface{}{"$ict_score", 1.2}},
+						bson.M{"$multiply": []interface{}{"$expected_goals", 3}},
+						bson.M{"$multiply": []interface{}{"$expected_assists", 1.5}},
+					}}},
 				},
-			},
+				"default": "$base_score",
+			}},
+		}}},
+		{{Key: "$addFields", Value: bson.M{
 			"value_score": bson.M{"$divide": []interface{}{"$total_points", "$now_cost"}},
 		}}},
 		{{Key: "$sort", Value: bson.M{"performance_score": -1}}},
@@ -96,151 +118,175 @@ func GetBestPerformersOverGameWeeks(collection *mongo.Collection, position int, 
 	return results, nil
 }
 
-func calculatePlayerScore(player config.PlayerPerformance) float64 {
-	// This is a simplified scoring function. You may want to adjust the weights based on your specific requirements.
-	return float64(player.TotalPoints) +
-		player.AvgPoints*5 +
-		float64(player.GoalsScored)*4 +
-		float64(player.Assists)*3 +
-		float64(player.CleanSheets)*4 +
-		float64(player.Saves)*0.5 +
-		float64(player.Bonus)*2 +
-		player.Influence*0.5 +
-		player.Creativity*0.5 +
-		player.Threat*0.5 +
-		player.ICTIndex*2 +
-		player.ExpectedGoals*3 +
-		player.ExpectedAssists*2 +
-		player.PerformanceScore*2 +
-		player.ValueScore*2
+//   https://mathematicallysafe.wordpress.com/2018/07/08/fpl-analysis-the-impact-of-fixtures-on-player-performance/
+// https://jinhyuncheong.com/jekyll/update/2018/12/26/Form_over_fixture.html
+
+// LOOKING INTO INTO HOW MUCH WEIGHT/ CONSIDERATION TO GIVE WHEN SELECTING PLAYERS BASED ON THEIR FORM AND FIXTURES
+//  BASED ON SOME READINGS, INDICATIONS SHOW FOR DEFENDERS AND AND GOALKEEPERS, FIXTURES ARE MORE IMPORTANT THAN FORM.
+//  FOR MIDFIELDERS AND FORWARDS, FORM IS MORE IMPORTANT THAN FIXTURES.
+
+//  FOR FOWARDS AND MIDFIELDERS. SELECT PLAYERS WITH THE BEST FORM , FOR DEFENDERS AND GOALKEEPERS , SELECT PLAYERS WIT THE BEST VALUE
+//  THAT WOULD BE  FORM  OVER PRICE AT THE MOMENT
+
+//	ADD CHECKS TO MAKE SURE TEAM DOES NOT HAVE MORE THAN 3 PLAYERS FROM THE SAME TEAM IN THIS A  GLOBAL MAP WHERE YOU ARE ADDING THE TEAM THE PLAYER IS IN AND CHECKING IF TEAM ALREADY OVER 3
+//	IF WE ARE OVER BUDGET THEN  STARTING WITH  MIDFIELDERS SECOND TO FIRST WITH REGUARDS TO FORM AND CYCLE DOWN THE 3 OTHER DEFENDERS DO A REPLACE AND CHECK IF THE TEAM  IS STILL OUT OF BUDGET IF IN BUDGET RETURN TEAM ,
+//
+// IF NOT THEN CYCLE DOWN TO THE NEXT MIDFIELDER AND REPEAT, IF STILL OUT OF BUDGET CYCLE THROUGH FORWARDS STARTING  AGAIN WITH SECOND BEST AND MOVING DOWN TO THE THIRD BEST FORWARD AND REPEAT THE PROCESS UNTIL A TEAM IS FOUND THAT IS WITHIN BUDGET
+// IF NO TEAM IS FOUND THEN RETURN AN ERROR MESSAGE THAT NO TEAM COULD BE FOUND WITHIN THE BUDGET
+func CalculateOptimalTeam(limitPrice int, goalies, defenders, midfielders, forwards []config.PlayerPerformance) ([]config.PlayerPerformance, error) {
+	fmt.Println("====Running the  numbers, picking optimal team ......")
+	const totalPlayerPerTeamLimmit = 3
+	totalCost := 0
+
+	err := checkPlayerCount(goalies, defenders, midfielders, forwards)
+	if err != nil {
+		fmt.Println("Not enough players are being returned from db")
+		return nil, err
+	}
+
+	sortPlayersByValue(goalies)
+	sortPlayersByValue(defenders)
+	sortPlayersByAveragePoints(midfielders)
+	sortPlayersByAveragePoints(forwards)
+
+	topGoalies := goalies[:1]
+	topDefenders := defenders[:5]
+	topMidfielders := midfielders[:5]
+	topForwards := forwards[:3]
+
+	selectedTeam := append(topGoalies, topDefenders...)
+	selectedTeam = append(selectedTeam, topMidfielders...)
+	selectedTeam = append(selectedTeam, topForwards...)
+
+	totalCost = calculateTotalCost(topGoalies, topDefenders, topMidfielders, topForwards)
+	playerteams = countplayersFromTeam(topGoalies, topDefenders, topMidfielders, topForwards)
+	for !checkTeam(playerteams) || totalCost > limitPrice {
+		fmt.Println("team has more than 3 players from the same team or is over budget")
+		fmt.Println("updating team composition")
+
+		if !checkTeam(playerteams) {
+			selectedTeam, err = adjustTeamComposition(selectedTeam, goalies, defenders, midfielders, forwards)
+
+		}
+		if totalCost > limitPrice {
+
+		}
+		return nil, errors.New("Team has more than 3 players from the same team or is over budget")
+
+	}
+
+	return selectedTeam, nil
 }
 
-// Greedy aproach
-func CalculateOptimalTeam(LimitPrice int, goalies, defenders, midfielders, forwards []config.PlayerPerformance) ([]config.PlayerPerformance, error) {
-	fmt.Println("================HITTING CALCULATE OPTIMAL=====================")
-	if len(goalies) < 2 {
-		return nil, fmt.Errorf("not enough goalkeepers: need 2, have %d", len(goalies))
-	}
-	if len(defenders) < 4 {
-		return nil, fmt.Errorf("not enough defenders: need 4, have %d", len(defenders))
-	}
-	if len(midfielders) < 4 {
-		return nil, fmt.Errorf("not enough midfielders: need 4, have %d", len(midfielders))
-	}
-	if len(forwards) < 3 {
-		return nil, fmt.Errorf("not enough forwards: need 3, have %d", len(forwards))
-	}
+func sortPlayersByAveragePoints(players []config.PlayerPerformance) {
+	sort.Slice(players, func(i, j int) bool {
+		return players[i].AvgPoints > players[j].AvgPoints
+	})
+}
 
-	// Sort players by score/price ratio
-	sort.Slice(goalies, func(i, j int) bool {
-		fmt.Println(goalies[i].NowCost)
-		return calculatePlayerScore(goalies[i])/float64(goalies[i].NowCost) > calculatePlayerScore(goalies[j])/float64(goalies[j].NowCost)
+func sortPlayersByValue(players []config.PlayerPerformance) {
+	sort.Slice(players, func(i, j int) bool {
+		return players[i].ValueScore > players[j].ValueScore
 	})
-	sort.Slice(defenders, func(i, j int) bool {
-		return calculatePlayerScore(defenders[i])/float64(defenders[i].NowCost) > calculatePlayerScore(defenders[j])/float64(defenders[j].NowCost)
-	})
-	sort.Slice(midfielders, func(i, j int) bool {
-		return calculatePlayerScore(midfielders[i])/float64(midfielders[i].NowCost) > calculatePlayerScore(midfielders[j])/float64(midfielders[j].NowCost)
-	})
-	sort.Slice(forwards, func(i, j int) bool {
-		return calculatePlayerScore(forwards[i])/float64(forwards[i].NowCost) > calculatePlayerScore(forwards[j])/float64(forwards[j].NowCost)
-	})
+}
 
-	// Initialize dynamic programming table
-	dp := make([][]float64, LimitPrice+1)
-	for i := range dp {
-		dp[i] = make([]float64, 14)
+func checkPlayerCount(goalies, defenders, midfielders, forwards []config.PlayerPerformance) error {
+	if len(goalies) < 1 || len(defenders) < 5 || len(midfielders) < 5 || len(forwards) < 3 {
+		return errors.New("not enough players to select from")
 	}
+	return nil
+}
 
-	// // Fill the dynamic programming table
-	for i := 1; i <= LimitPrice; i++ {
-		for j := 1; j <= 13; j++ {
-			dp[i][j] = dp[i][j-1]
-			if j <= 2 && j-1 < len(goalies) && i >= goalies[j-1].NowCost {
-				dp[i][j] = max(dp[i][j], dp[i-goalies[j-1].NowCost][j-1]+calculatePlayerScore(goalies[j-1]))
-			} else if j > 2 && j <= 6 && j-3 < len(defenders) && i >= defenders[j-3].NowCost {
-				dp[i][j] = max(dp[i][j], dp[i-defenders[j-3].NowCost][j-1]+calculatePlayerScore(defenders[j-3]))
-			} else if j > 6 && j <= 10 && j-7 < len(midfielders) && i >= midfielders[j-7].NowCost {
-				dp[i][j] = max(dp[i][j], dp[i-midfielders[j-7].NowCost][j-1]+calculatePlayerScore(midfielders[j-7]))
-			} else if j > 10 && j <= 13 && j-11 < len(forwards) && i >= forwards[j-11].NowCost {
-				dp[i][j] = max(dp[i][j], dp[i-forwards[j-11].NowCost][j-1]+calculatePlayerScore(forwards[j-11]))
-			}
+func countplayersFromTeam(goalies, defenders, midfielders, forwards []config.PlayerPerformance) map[int]int {
+	teamCount := make(map[int]int)
+
+	for _, player := range goalies {
+		teamCount[player.Team]++
+	}
+	for _, player := range defenders {
+		teamCount[player.Team]++
+	}
+	for _, player := range midfielders {
+		teamCount[player.Team]++
+	}
+	for _, player := range forwards {
+		teamCount[player.Team]++
+	}
+	return teamCount
+}
+
+func calculateTotalCost(goalies, defenders, midfielders, forwards []config.PlayerPerformance) int {
+	totalCost := 0
+	for _, player := range goalies {
+		totalCost += player.NowCost
+	}
+	for _, player := range defenders {
+		totalCost += player.NowCost
+	}
+	for _, player := range midfielders {
+		totalCost += player.NowCost
+	}
+	for _, player := range forwards {
+		totalCost += player.NowCost
+	}
+	return totalCost
+}
+
+func checkTeam(map2 map[int]int) bool {
+	for _, value := range map2 {
+		if value > 3 {
+			return false
+		}
+		if value < 3 {
+			teamswithTomanyPlayer = append(teamswithTomanyPlayer, value)
+			return true
 		}
 	}
-
-	// // Backtrack to find the selected players
-	selected := make([]config.PlayerPerformance, 0, 13)
-	i, j := LimitPrice, 13
-	for j > 0 {
-		if j <= 2 && j <= len(goalies) {
-			if i >= goalies[j-1].NowCost && dp[i][j] == dp[i-goalies[j-1].NowCost][j-1]+calculatePlayerScore(goalies[j-1]) {
-				selected = append(selected, goalies[j-1])
-				i -= goalies[j-1].NowCost
-			}
-		} else if j <= 6 && j-3 < len(defenders) {
-			if i >= defenders[j-3].NowCost && dp[i][j] == dp[i-defenders[j-3].NowCost][j-1]+calculatePlayerScore(defenders[j-3]) {
-				selected = append(selected, defenders[j-3])
-				i -= defenders[j-3].NowCost
-			}
-		} else if j <= 10 && j-7 < len(midfielders) {
-			if i >= midfielders[j-7].NowCost && dp[i][j] == dp[i-midfielders[j-7].NowCost][j-1]+calculatePlayerScore(midfielders[j-7]) {
-				selected = append(selected, midfielders[j-7])
-				i -= midfielders[j-7].NowCost
-			}
-		} else if j <= 13 && j-11 < len(forwards) {
-			if i >= forwards[j-11].NowCost && dp[i][j] == dp[i-forwards[j-11].NowCost][j-1]+calculatePlayerScore(forwards[j-11]) {
-				selected = append(selected, forwards[j-11])
-				i -= forwards[j-11].NowCost
-			}
-		}
-		j--
-	}
-	//  print the selected players
-
-	// // Check if we have the correct number of players in each position
-	goaliesCount := 0
-	defendersCount := 0
-	midfieldersCount := 0
-	forwardsCount := 0
-	for _, player := range selected {
-		switch {
-		case player.ID == goalies[0].ID || player.ID == goalies[1].ID:
-			goaliesCount++
-		case player.ID == defenders[0].ID || player.ID == defenders[1].ID || player.ID == defenders[2].ID || player.ID == defenders[3].ID:
-			defendersCount++
-		case player.ID == midfielders[0].ID || player.ID == midfielders[1].ID || player.ID == midfielders[2].ID || player.ID == midfielders[3].ID:
-			midfieldersCount++
-		case player.ID == forwards[0].ID || player.ID == forwards[1].ID || player.ID == forwards[2].ID:
-			forwardsCount++
-		}
-	}
-
-	if goaliesCount != 2 || defendersCount != 4 || midfieldersCount != 4 || forwardsCount != 3 {
-		return nil, errors.New("could not select the required number of players for each position within the given budget")
-	}
-
-	// Reverse the selected slice to get the correct order
-	for i, j := 0, len(selected)-1; i < j; i, j = i+1, j-1 {
-		selected[i], selected[j] = selected[j], selected[i]
-	}
-
-	return selected, nil
+	return true
 }
 
-func max(a, b float64) float64 {
-	if a > b {
-		return a
-	}
-	return b
+func adjustTeamComposition(selectedTeam, goalies, defenders, midfielders, forwards []config.PlayerPerformance) ([]config.PlayerPerformance, error) {
+	// teamswithTomanyPlayer []int
+	// selectedTeam[0] = goalie
+	// selectedTeam[1] = goalie
+	// selectedTeam[2] = defender
+	// selectedTeam[3] = defender
+	// selectedTeam[4] = defender
+	// selectedTeam[5] = defender
+	// selectedTeam[6] = defender
+	// selectedTeam[7] = midfielder
+	// selectedTeam[8] = midfielder
+	// selectedTeam[9] = midfielder
+	// selectedTeam[10] = midfielder
+	// selectedTeam[11] = midfielder
+	// selectedTeam[12] = forward
+	// selectedTeam[13] = forward
+	// selectedTeam[14] = forward
+
+	// var playerteams map[int]int
+	// var teamswithTomanyPlayer []int
+
+	//  start with defenders  position 3 and cycle through the other defenders
+	//  if player[i].Team is  in teamswithTomanyPlayer []int then replace with a new player , replace with player found in coresponding player array
+	// then suntract 1 from map and add 1 to the new player team in map
+	// check if team in map is still over 3 comtinue
+	//  if below 3 then remove from teamswithTomanyPlayer []int
+
 }
 
-type Node struct {
-	players         []config.PlayerPerformance
-	selectedPlayers []bool
-	bound           float64
-	value           float64
-	cost            int
-	positionCounts  map[string]int
-}
-
-// TODO Look into Branch and Bound Algo implementation
+// func calculateTotalCost(goalies, defenders, midfielders, forwards []config.PlayerPerformance) int {
+// 	totalCost := 0
+// 	for _, player := range goalies {
+// 		totalCost += player.NowCost
+// 	}
+// 	for _, player := range defenders {
+// 		totalCost += player.NowCost
+// 	}
+// 	for _, player := range midfielders {
+// 		totalCost += player.NowCost
+// 	}
+// 	for _, player := range forwards {
+// 		totalCost += player.NowCost
+// 	}
+// 	return totalCost
+// }

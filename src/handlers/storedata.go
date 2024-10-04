@@ -118,6 +118,7 @@ func FetchAndStoreGameWeekData(w http.ResponseWriter, r *http.Request) {
 }
 
 // ==================================================
+
 func GetGameData(w http.ResponseWriter, r *http.Request) {
 	collection := db.GetGameWeekCollection()
 	if collection == nil {
@@ -155,66 +156,59 @@ func GetBestPerformers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	goalkeepers, err := GetBestPerformersOverGameWeeks(collection, 1, 3, 5, 20)
+	goalkeepers, err := GetBestPerformersOverGameWeeks(collection, 1, 3, 6, 20)
 	if err != nil {
 		http.Error(w, "Error getting goalkeepers: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	defenders, err := GetBestPerformersOverGameWeeks(collection, 2, 3, 5, 20)
+	defenders, err := GetBestPerformersOverGameWeeks(collection, 2, 3, 6, 20)
 	if err != nil {
 		http.Error(w, "Error getting defenders: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	midfielders, err := GetBestPerformersOverGameWeeks(collection, 3, 3, 5, 20)
+	midfielders, err := GetBestPerformersOverGameWeeks(collection, 3, 3, 6, 20)
 	if err != nil {
 		http.Error(w, "Error getting midfielders: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	forwards, err := GetBestPerformersOverGameWeeks(collection, 4, 3, 5, 20)
+	forwards, err := GetBestPerformersOverGameWeeks(collection, 4, 3, 6, 20)
 	if err != nil {
 		http.Error(w, "Error getting forwards: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+	fmt.Println("==========================================Goalkeepers")
+	for _, player := range goalkeepers {
+		fmt.Printf("Player:%v\n TotalValue:%v, averageScore: %v", player.WebName, player.TotalPoints, player.AvgPoints)
 
-	// // Calculate the optimal team
-	limitPrice := 1030 // Set your budget limit here
+	}
+	fmt.Println("==========================================Defenders")
+	for _, player := range defenders {
+		fmt.Printf("Player:%v\n TotalValue:%v, averageScore: %v", player.WebName, player.TotalPoints, player.AvgPoints)
+	}
+	fmt.Println("==========================================Midfielders")
+	for _, player := range midfielders {
+		fmt.Printf("Player:%v\n TotalValue:%v , averageScore: %v ", player.WebName, player.TotalPoints, player.AvgPoints)
+	}
+	fmt.Println("==========================================Forwards")
+	for _, player := range forwards {
+		fmt.Printf("Player:%v\n TotalValue:%v, averageScore: %v", player.WebName, player.TotalPoints, player.AvgPoints)
+	}
+	limitPrice := 1030
 	optimalTeam, err := CalculateOptimalTeam(limitPrice, goalkeepers, defenders, midfielders, forwards)
 	if err != nil {
 		http.Error(w, "Error calculating optimal team: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// // Prepare the response
 	response := struct {
 		OptimalTeam []config.PlayerPerformance `json:"optimalTeam"`
-		TotalCost   int                        `json:"totalCost"`
-		TotalPoints int                        `json:"totalPoints"`
 	}{
 		OptimalTeam: optimalTeam,
-		TotalCost:   calculateTotalCost(optimalTeam),
-		TotalPoints: calculateTotalPoints(optimalTeam),
 	}
 
-	// // Send the response as JSON
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
-}
-
-func calculateTotalCost(team []config.PlayerPerformance) int {
-	total := 0
-	for _, player := range team {
-		total += player.NowCost
-	}
-	return total
-}
-
-func calculateTotalPoints(team []config.PlayerPerformance) int {
-	total := 0
-	for _, player := range team {
-		total += player.TotalPoints
-	}
-	return total
 }

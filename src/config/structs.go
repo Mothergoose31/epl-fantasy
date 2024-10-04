@@ -279,6 +279,7 @@ type PlayerPerformance struct {
 	WebName           string  `bson:"web_name"`
 	TotalPoints       int     `bson:"total_points"`
 	AvgPoints         float64 `bson:"avg_points"`
+	Team              int     `bson:"team"`
 	GoalsScored       int     `bson:"goals_scored"`
 	Assists           int     `bson:"assists"`
 	CleanSheets       int     `bson:"clean_sheets"`
@@ -303,4 +304,9 @@ type OptimalTeam struct {
 	Defenders   []PlayerPerformance `json:"defenders"`
 	Midfielders []PlayerPerformance `json:"midfielders"`
 	Forwards    []PlayerPerformance `json:"forwards"`
+}
+
+type PlayersFromTeamCount struct {
+	PlayersFromTeam        map[int]int
+	TeamsWithTomanyPlayers []int
 }
