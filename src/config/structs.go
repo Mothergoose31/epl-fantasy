@@ -12,6 +12,9 @@ var (
 	Client *mongo.Client
 )
 
+// ======================EPL API Structs ======================
+// ============================================================
+
 type Data struct {
 	Events       []Event       `json:"events"`
 	GameSettings GameSettings  `json:"game_settings"`
@@ -50,15 +53,21 @@ type Event struct {
 	MostViceCaptained      int        `json:"most_vice_captained"`
 }
 
+// ==================================
+
 type ChipPlay struct {
 	ChipName  string `json:"chip_name"`
 	NumPlayed int    `json:"num_played"`
 }
 
+// ==================================
+
 type TopElement struct {
 	ID     int `json:"id"`
 	Points int `json:"points"`
 }
+
+// ==================================
 
 type GameSettings struct {
 	LeagueJoinPrivateMax         int      `json:"league_join_private_max"`
@@ -94,6 +103,8 @@ type GameSettings struct {
 	Timezone                     string   `json:"timezone"`
 }
 
+// ==================================
+
 type Team struct {
 	Code                int     `json:"code"`
 	Draw                int     `json:"draw"`
@@ -117,6 +128,8 @@ type Team struct {
 	StrengthDefenceAway int     `json:"strength_defence_away"`
 	PulseID             int     `json:"pulse_id"`
 }
+
+// ==================================
 
 type Element struct {
 	ChanceOfPlayingNextRound         int       `json:"chance_of_playing_next_round,omitempty"`
@@ -210,6 +223,8 @@ type Element struct {
 	CleanSheetsPer90                 float64   `json:"clean_sheets_per_90,omitempty"`
 }
 
+// ==================================
+
 type ElementType struct {
 	ID                 int    `json:"id"`
 	PluralName         string `json:"plural_name"`
@@ -266,6 +281,8 @@ type PlayerSnapshot struct {
 	ExpectedAssistsPer90 float64 `bson:"expected_assists_per_90"`
 }
 
+// ==================================
+
 type GameWeekData struct {
 	ID        primitive.ObjectID `bson:"_id,omitempty"`
 	GameWeek  int                `bson:"game_week"`
@@ -274,12 +291,15 @@ type GameWeekData struct {
 	Players   []PlayerSnapshot   `bson:"players"`
 }
 
+// ==================================
+
 type PlayerPerformance struct {
 	ID                int     `bson:"_id"`
 	WebName           string  `bson:"web_name"`
 	TotalPoints       int     `bson:"total_points"`
 	AvgPoints         float64 `bson:"avg_points"`
 	Team              int     `bson:"team"`
+	ElementType       int     `bson:"element_type"`
 	GoalsScored       int     `bson:"goals_scored"`
 	Assists           int     `bson:"assists"`
 	CleanSheets       int     `bson:"clean_sheets"`
@@ -299,14 +319,13 @@ type PlayerPerformance struct {
 	ValueScore        float64 `bson:"value_score"`
 }
 
+// ========= RESPONSE STRUCTS =========
+// ====================================
+
 type OptimalTeam struct {
+	TotalCost   int                 `json:"total_cost"`
 	Goalkeepers []PlayerPerformance `json:"goalkeepers"`
 	Defenders   []PlayerPerformance `json:"defenders"`
 	Midfielders []PlayerPerformance `json:"midfielders"`
 	Forwards    []PlayerPerformance `json:"forwards"`
-}
-
-type PlayersFromTeamCount struct {
-	PlayersFromTeam        map[int]int
-	TeamsWithTomanyPlayers []int
 }

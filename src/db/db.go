@@ -31,8 +31,6 @@ func InitializeMongoDB(configs *config.StatusConfig) (*mongo.Client, error) {
 }
 
 // ===============================================================
-
-// ===============================================================
 func getDatabaseName() string {
 	if config.App.Mongo.AuthEnabled {
 		databaseName, err := config.ReadCredential(config.App.Path.Secrets, "database")
