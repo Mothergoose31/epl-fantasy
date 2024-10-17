@@ -51,6 +51,15 @@ func GetConfig(environment string) *StatusConfig {
 				Secrets: "/etc/secrets",
 			},
 		}
+	case "DOCKER":
+		return &StatusConfig{
+			Mongo: MongoConfig{
+				AuthEnabled:        false,
+				Host:               "mongodb",
+				Port:               27017,
+				ConnectionInterval: 5000,
+			},
+		}
 	default:
 		log.Fatalf("Unknown environment: %s", environment)
 		return nil

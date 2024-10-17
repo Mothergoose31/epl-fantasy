@@ -314,3 +314,7 @@ func adjustTeamCompWithBudget(selectedTeam, goalies, defenders, midfielders, for
 
 	return nil, fmt.Errorf("unable to adjust team composition to meet budget requirements")
 }
+
+// =========================================================================================================================================
+//
+//	create a cron job  function that will query every at 8AM Wenesday  to fetch game week

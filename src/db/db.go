@@ -14,6 +14,7 @@ import (
 
 func InitializeMongoDB(configs *config.StatusConfig) (*mongo.Client, error) {
 	mongoURI := fmt.Sprintf("mongodb://%s:%d", config.App.Mongo.Host, config.App.Mongo.Port)
+	fmt.Println("MongoURI: ", mongoURI)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -26,7 +27,12 @@ func InitializeMongoDB(configs *config.StatusConfig) (*mongo.Client, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = client.Ping(ctx, nil)
+	if err != nil {
+		log.Printf("Failed to ping MongoDB: %v", err)
 
+	}
+	log.Println("Successfully connected to MongoDB")
 	return client, nil
 }
 
@@ -34,11 +40,13 @@ func InitializeMongoDB(configs *config.StatusConfig) (*mongo.Client, error) {
 func getDatabaseName() string {
 	if config.App.Mongo.AuthEnabled {
 		databaseName, err := config.ReadCredential(config.App.Path.Secrets, "database")
+
 		if err != nil {
 			log.Printf("Failed to read database name: %v", err)
 		}
 		return databaseName
 	}
+
 	return "fantasy_football"
 }
 
@@ -54,6 +62,7 @@ func GetCollection(collectionName string) *mongo.Collection {
 // ===============================================================
 
 func GetGameWeekCollection() *mongo.Collection {
+	fmt.Println("Getting game week collection")
 	return GetCollection("gameweek_data")
 
 }

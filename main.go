@@ -16,7 +16,7 @@ import (
 )
 
 func init() {
-	config.App = config.GetConfig("LOCAL")
+	config.App = config.GetConfig("DOCKER")
 }
 
 func main() {
@@ -25,13 +25,13 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error initializing MongoDB: %v", err)
 	}
-	log.Println("Successfully connected to MongoDB")
 
 	r := mux.NewRouter()
+	r.HandleFunc("/health/live", handlers.Liveness).Methods("GET")
 	r.HandleFunc("/epl", handlers.FetchAndStoreGameWeekData).Methods("POST")
 	r.HandleFunc("/epl", handlers.GetGameData).Methods("GET")
 	r.HandleFunc("/epl/players", handlers.GetBestPerformers).Methods("GET")
-
+	r.HandleFunc("/epl/players/improved", handlers.GetImprovedPlayers).Methods("GET")
 	server := &http.Server{
 		Addr:    ":8080",
 		Handler: r,

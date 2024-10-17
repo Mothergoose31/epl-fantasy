@@ -317,6 +317,8 @@ type PlayerPerformance struct {
 	SelectedByPercent float64 `bson:"selected_by_percent"`
 	PerformanceScore  float64 `bson:"performance_score"`
 	ValueScore        float64 `bson:"value_score"`
+	FormDiff          float64 `bson:"form_diff"`
+	NowCostDiff       int     `bson:"now_cost_diff"`
 }
 
 // ========= RESPONSE STRUCTS =========

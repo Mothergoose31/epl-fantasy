@@ -195,3 +195,45 @@ func parseFloat(s string) float64 {
 	f, _ := strconv.ParseFloat(s, 64)
 	return f
 }
+
+// =========================================================================================================================================
+// get players that have increased in value
+
+func GetImprovedPlayers(collection *mongo.Collection, startGameWeek, endGameWeek int) ([]config.PlayerPerformance, error) {
+	pipeline := mongo.Pipeline{
+		{{Key: "$match", Value: bson.M{
+			"game_week": bson.M{"$in": []int{startGameWeek, endGameWeek}},
+		}}},
+		{{Key: "$unwind", Value: "$players"}},
+		{{Key: "$group", Value: bson.M{
+			"_id":          "$players.id",
+			"web_name":     bson.M{"$first": "$players.web_name"},
+			"total_points": bson.M{"$sum": "$players.event_points"},
+			"start_cost":   bson.M{"$first": "$players.now_cost"},
+			"end_cost":     bson.M{"$last": "$players.now_cost"},
+			"element_type": bson.M{"$first": "$players.element_type"},
+			"team":         bson.M{"$first": "$players.team"},
+		}}},
+		{{Key: "$addFields", Value: bson.M{
+			"now_cost_diff": bson.M{"$subtract": []string{"$end_cost", "$start_cost"}},
+		}}},
+		{{Key: "$match", Value: bson.M{
+			"now_cost_diff": bson.M{"$gt": 0},
+		}}},
+		{{Key: "$sort", Value: bson.M{"now_cost_diff": -1}}},
+		{{Key: "$limit", Value: 10}},
+	}
+
+	cur, err := collection.Aggregate(context.Background(), pipeline)
+	if err != nil {
+		return nil, err
+	}
+	defer cur.Close(context.Background())
+
+	var results []config.PlayerPerformance
+	if err = cur.All(context.Background(), &results); err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}
