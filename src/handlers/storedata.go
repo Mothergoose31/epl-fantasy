@@ -13,10 +13,14 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+// =========================================================================================================================================
+
 func Liveness(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte("{\"status\": \"ok\"}"))
 }
+
+// =========================================================================================================================================
 
 func FetchAndStoreGameWeekData(w http.ResponseWriter, r *http.Request) {
 	fplService, err := service.NewFPLService()
@@ -55,9 +59,7 @@ func GetGameData(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	fmt.Println("================================================")
-	fmt.Println(collection)
-	fmt.Println("================================================")
+
 	filter := bson.M{}
 	cursor, err := collection.Find(context.Background(), filter)
 	if err != nil {
@@ -98,7 +100,7 @@ func GetBestPerformers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	goalkeepers, err := db.GetBestPerformersOverGameWeeks(collection, 1, 3, 6, 20)
+	goalkeepers, err := db.GetBestPerformersOverGameWeeks(collection, 1, 6, 8, 20)
 	if err != nil {
 		fmt.Println("Error getting goalkeepers: ", err)
 		http.Error(w, "Error getting goalkeepers: "+err.Error(), http.StatusInternalServerError)
@@ -111,19 +113,19 @@ func GetBestPerformers(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("Player:%v\n TotalValue:%v, averageScore: %v", player.WebName, player.TotalPoints, player.AvgPoints)
 	}
 
-	defenders, err := db.GetBestPerformersOverGameWeeks(collection, 2, 3, 6, 20)
+	defenders, err := db.GetBestPerformersOverGameWeeks(collection, 2, 6, 8, 20)
 	if err != nil {
 		http.Error(w, "Error getting defenders: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	midfielders, err := db.GetBestPerformersOverGameWeeks(collection, 3, 3, 6, 20)
+	midfielders, err := db.GetBestPerformersOverGameWeeks(collection, 3, 6, 8, 20)
 	if err != nil {
 		http.Error(w, "Error getting midfielders: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	forwards, err := db.GetBestPerformersOverGameWeeks(collection, 4, 3, 7, 20)
+	forwards, err := db.GetBestPerformersOverGameWeeks(collection, 4, 6, 8, 20)
 	if err != nil {
 		http.Error(w, "Error getting forwards: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -162,7 +164,7 @@ func GetImprovedPlayers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	improvedPlayers, err := db.GetImprovedPlayers(collection, 3, 7)
+	improvedPlayers, err := db.GetImprovedPlayers(collection, 6, 8)
 	if err != nil {
 		http.Error(w, "Error getting improved players: "+err.Error(), http.StatusInternalServerError)
 		return

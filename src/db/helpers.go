@@ -237,3 +237,30 @@ func GetImprovedPlayers(collection *mongo.Collection, startGameWeek, endGameWeek
 
 	return results, nil
 }
+
+func filterAndIncludePlayers(players []config.PlayerPerformance, includedPlayers, excludedPlayers []string) []config.PlayerPerformance {
+	var filteredPlayers []config.PlayerPerformance
+	includedSet := make(map[string]bool)
+	excludedSet := make(map[string]bool)
+
+	for _, name := range includedPlayers {
+		includedSet[name] = true
+	}
+	for _, name := range excludedPlayers {
+		excludedSet[name] = true
+	}
+
+	for _, player := range players {
+		if includedSet[player.WebName] {
+			filteredPlayers = append(filteredPlayers, player)
+			delete(includedSet, player.WebName)
+		} else if !excludedSet[player.WebName] {
+			filteredPlayers = append(filteredPlayers, player)
+		}
+	}
+	//  add logic to fetch players from db if they are not in the includedPlayers or excludedPlayers
+
+	// db call will return the players that are in the db , if they are not there then skip and  if nothing is there return empty array
+
+	return filteredPlayers
+}

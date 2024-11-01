@@ -67,7 +67,7 @@ func CalculateOptimalTeam(limitPrice int, goalies, defenders, midfielders, forwa
 
 	if positionCounts[1] != 2 {
 		fmt.Println("Warning: Incorrect number of goalkeepers selected!")
-		// You might want to add additional logic here to handle this case
+
 	}
 
 	totalCost = calculateTotalCost(selectedTeam)
@@ -316,5 +316,3 @@ func adjustTeamCompWithBudget(selectedTeam, goalies, defenders, midfielders, for
 }
 
 // =========================================================================================================================================
-//
-//	create a cron job  function that will query every at 8AM Wenesday  to fetch game week
